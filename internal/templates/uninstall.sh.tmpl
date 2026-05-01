@@ -1,0 +1,25 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+NAMESPACE="{{ .Namespace }}"
+
+uninstall_if_present() {
+  local release="$1"
+  if helm status "${release}" -n "${NAMESPACE}" >/dev/null 2>&1; then
+    helm uninstall "${release}" -n "${NAMESPACE}"
+  else
+    echo "Release ${release} not found in namespace ${NAMESPACE}; skipping"
+  fi
+}
+
+uninstall_if_present alloy
+uninstall_if_present tempo
+uninstall_if_present mimir
+uninstall_if_present loki
+{{ if eq .Storage.Type "minio" }}
+uninstall_if_present minio
+{{ end }}
+
+echo "Helm releases removed where present."
+echo "PVCs, object storage buckets, and Kubernetes secrets were not deleted."
+echo "Review leftover PVCs and secrets manually before deleting them."

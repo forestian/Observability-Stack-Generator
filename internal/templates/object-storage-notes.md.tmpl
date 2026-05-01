@@ -1,0 +1,59 @@
+# Object Storage Notes
+
+Generated storage mode: `{{ .Storage.Type }}`
+
+Endpoint placeholder: `{{ .Storage.Endpoint }}`
+Region placeholder: `{{ .Storage.Region }}`
+
+## Bucket assumptions
+
+The generated values assume these buckets exist or are created by your storage process:
+
+- `loki-chunks`
+- `loki-ruler`
+- `loki-admin`
+- `mimir-blocks`
+- `mimir-ruler`
+- `mimir-alertmanager`
+- `tempo-traces`
+
+## Secret assumptions
+
+No real credentials were generated.
+
+Create object storage credentials manually and wire them into the Helm charts according to the exact chart versions you install.
+
+Placeholder secret reference style:
+
+```yaml
+accessKeyId:
+  existingSecret: obsgen-object-storage
+  existingSecretKey: access_key
+secretAccessKey:
+  existingSecret: obsgen-object-storage
+  existingSecretKey: secret_key
+```
+
+## MinIO mode
+
+{{ if eq .Storage.Type "minio" }}
+This stack includes `storage/minio-values.yaml` for a standalone MinIO dev/test deployment. It uses an existing secret placeholder for MinIO root credentials and does not include real credentials.
+{{ else }}
+This stack was generated for S3-compatible storage, so `storage/minio-values.yaml` was not generated and the install script does not install MinIO.
+{{ end }}
+
+If you use MinIO, create any required root or access credential secrets manually, confirm the bucket creation behavior for your chart version, and review PVC sizing before installation.
+
+## S3-compatible mode
+
+For AWS S3 or another S3-compatible service, create buckets, lifecycle policies, encryption settings, IAM policies, and Kubernetes secrets outside of obsgen.
+
+Update endpoints, regions, TLS settings, and secret wiring in the generated values before installing.
+
+## Manual tasks before install
+
+- Create object storage buckets or confirm that your storage chart creates them.
+- Create Kubernetes secrets for object storage credentials.
+- Review bucket retention, lifecycle, and deletion policies.
+- Confirm that each chart version supports the values keys used here.
+- Review network policies and service names for your cluster.

@@ -1,0 +1,45 @@
+# Starter values for grafana/tempo-distributed.
+# Review receiver exposure, authentication, and resource sizing before installation.
+
+tempo:
+  structuredConfig:
+    storage:
+      trace:
+        backend: s3
+        s3:
+          bucket: tempo-traces
+          endpoint: {{ .Storage.Endpoint | printf "%q" }}
+          region: {{ .Storage.Region | printf "%q" }}
+          insecure: {{ .Storage.Insecure }}
+
+    compactor:
+      compaction:
+        block_retention: {{ .Tempo.Retention | printf "%q" }}
+
+# Do not put real object storage credentials in values files.
+# Create a Kubernetes secret manually and wire it according to your chart version.
+# Placeholder style:
+# accessKeyId:
+#   existingSecret: {{ .Storage.AccessKeySecretName }}
+#   existingSecretKey: access_key
+# secretAccessKey:
+#   existingSecret: {{ .Storage.SecretKeySecretName }}
+#   existingSecretKey: secret_key
+
+traces:
+  otlp:
+    grpc:
+      enabled: true
+    http:
+      enabled: true
+
+distributor:
+  replicas: {{ .Tempo.Replicas }}
+ingester:
+  replicas: {{ .Tempo.Replicas }}
+querier:
+  replicas: {{ .Tempo.Replicas }}
+query_frontend:
+  replicas: {{ .Tempo.Replicas }}
+compactor:
+  replicas: 1

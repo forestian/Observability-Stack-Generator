@@ -1,0 +1,108 @@
+# {{ .Name }}
+
+Generated starter Kubernetes observability stack configuration for namespace `{{ .Namespace }}`.
+
+{{ if eq .Profile "production" }}
+
+This is a production-oriented starter configuration. It is not production-certified, and every value should be reviewed against your reliability, security, data retention, and capacity requirements before use.
+{{ else }}
+
+This is a development starter configuration intended for local, lab, and early platform evaluation environments.
+{{ end }}
+
+## What was generated
+
+- Grafana Loki Helm values for logs
+- Grafana Mimir Helm values for metrics
+- Grafana Tempo Helm values for traces
+- Grafana Alloy Helm values for collection and forwarding
+{{ if eq .Storage.Type "minio" }}
+- MinIO Helm values for S3-compatible object storage in dev/test mode
+{{ else }}
+- S3-compatible object storage notes and placeholders
+{{ end }}
+- Install and uninstall helper scripts
+
+## Helm repositories
+
+```sh
+helm repo add grafana https://grafana.github.io/helm-charts
+helm repo add minio https://charts.min.io/
+helm repo update
+```
+
+The MinIO repository is only required when installing the generated MinIO storage option.
+
+## Storage assumptions
+
+Object storage is configured as `{{ .Storage.Type }}` with endpoint `{{ .Storage.Endpoint }}` and region `{{ .Storage.Region }}`.
+
+The generated values reference placeholder Kubernetes secrets only. They do not contain real credentials. Create object storage secrets manually before installation and confirm the exact secret wiring expected by the Helm chart versions you use.
+
+Expected object storage credential secret shape:
+
+```yaml
+accessKeyId:
+  existingSecret: obsgen-object-storage
+  existingSecretKey: access_key
+secretAccessKey:
+  existingSecret: obsgen-object-storage
+  existingSecretKey: secret_key
+```
+
+See `storage/object-storage-notes.md` for bucket and secret assumptions.
+
+## Install
+
+Review all generated files before applying them to a cluster.
+
+```sh
+kubectl create namespace {{ .Namespace }}
+{{ if eq .Storage.Type "minio" }}
+
+helm upgrade --install minio minio/minio \
+  -n {{ .Namespace }} \
+  -f storage/minio-values.yaml
+{{ end }}
+
+helm upgrade --install loki grafana/loki \
+  -n {{ .Namespace }} \
+  -f values/loki-values.yaml
+
+helm upgrade --install mimir grafana/mimir-distributed \
+  -n {{ .Namespace }} \
+  -f values/mimir-values.yaml
+
+helm upgrade --install tempo grafana/tempo-distributed \
+  -n {{ .Namespace }} \
+  -f values/tempo-values.yaml
+
+helm upgrade --install alloy grafana/alloy \
+  -n {{ .Namespace }} \
+  -f values/alloy-values.yaml
+```
+
+You can also run:
+
+```sh
+./examples/install.sh
+```
+
+## Uninstall
+
+```sh
+./examples/uninstall.sh
+```
+
+The uninstall script removes Helm releases only. It does not delete PVCs, object storage buckets, or Kubernetes secrets by default.
+
+## Production review checklist
+
+- Replace placeholder secret references with secrets created and managed by your platform process.
+- Confirm bucket names, lifecycle policies, encryption, network paths, and access policies.
+- Review Loki, Mimir, and Tempo retention periods against compliance and cost requirements.
+- Review replica counts, resource requests, persistence, topology spread, and disruption budgets.
+- Verify chart versions and supported values keys before installing.
+- Run a restore and deletion test for object storage before relying on the stack.
+
+Generated configs should be reviewed before production use.

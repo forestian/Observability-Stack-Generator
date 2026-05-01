@@ -1,0 +1,66 @@
+# Starter values for grafana/mimir-distributed.
+# This file intentionally keeps Mimir conservative and readable.
+
+mimir:
+  structuredConfig:
+    common:
+      storage:
+        backend: s3
+        s3:
+          endpoint: {{ .Storage.Endpoint | printf "%q" }}
+          region: {{ .Storage.Region | printf "%q" }}
+          insecure: {{ .Storage.Insecure }}
+
+    blocks_storage:
+      backend: s3
+      s3:
+        bucket_name: mimir-blocks
+        endpoint: {{ .Storage.Endpoint | printf "%q" }}
+        region: {{ .Storage.Region | printf "%q" }}
+        insecure: {{ .Storage.Insecure }}
+
+    ruler_storage:
+      backend: s3
+      s3:
+        bucket_name: mimir-ruler
+        endpoint: {{ .Storage.Endpoint | printf "%q" }}
+        region: {{ .Storage.Region | printf "%q" }}
+        insecure: {{ .Storage.Insecure }}
+
+    alertmanager_storage:
+      backend: s3
+      s3:
+        bucket_name: mimir-alertmanager
+        endpoint: {{ .Storage.Endpoint | printf "%q" }}
+        region: {{ .Storage.Region | printf "%q" }}
+        insecure: {{ .Storage.Insecure }}
+
+    limits:
+      # Retain metric blocks for the selected profile.
+      compactor_blocks_retention_period: {{ .Mimir.Retention | printf "%q" }}
+
+# Do not put real object storage credentials in values files.
+# Create a Kubernetes secret manually and wire it according to your chart version.
+# Placeholder style:
+# accessKeyId:
+#   existingSecret: {{ .Storage.AccessKeySecretName }}
+#   existingSecretKey: access_key
+# secretAccessKey:
+#   existingSecret: {{ .Storage.SecretKeySecretName }}
+#   existingSecretKey: secret_key
+
+minio:
+  enabled: false
+
+ingester:
+  replicas: {{ .Mimir.Replicas }}
+distributor:
+  replicas: {{ .Mimir.Replicas }}
+querier:
+  replicas: {{ .Mimir.Replicas }}
+query_frontend:
+  replicas: {{ .Mimir.Replicas }}
+store_gateway:
+  replicas: {{ .Mimir.Replicas }}
+compactor:
+  replicas: 1

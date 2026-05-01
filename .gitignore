@@ -1,0 +1,40 @@
+# Build outputs
+/bin/
+/dist/
+*.exe
+*.test
+*.out
+
+# Coverage and profiling
+coverage.out
+*.prof
+.gocache/
+.gomodcache/
+
+# Generated example stacks
+/observability-stack/
+/demo-stack/
+/demo-s3-stack/
+
+# Local editor and OS files
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/
+
+# Local environment and sensitive files
+.env
+.env.*
+*.env
+*token*
+*secret*
+*credential*
+kubeconfig
+kubeconfig.*
+*.kubeconfig
+id_rsa
+id_rsa.*
+id_ed25519
+id_ed25519.*
+*.pem
+*.key

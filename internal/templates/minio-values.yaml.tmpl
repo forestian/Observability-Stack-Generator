@@ -1,0 +1,45 @@
+# Starter values for minio/minio in dev/test mode.
+# Do not place real MinIO credentials in this file.
+
+mode: standalone
+
+# Create this secret manually with credentials accepted by your chosen MinIO chart version.
+existingSecret: obsgen-minio-root
+
+persistence:
+  enabled: true
+  size: 20Gi
+
+resources:
+  requests:
+    cpu: 100m
+    memory: 256Mi
+
+buckets:
+  - name: loki-chunks
+    policy: none
+    purge: false
+  - name: loki-ruler
+    policy: none
+    purge: false
+  - name: loki-admin
+    policy: none
+    purge: false
+  - name: mimir-blocks
+    policy: none
+    purge: false
+  - name: mimir-ruler
+    policy: none
+    purge: false
+  - name: mimir-alertmanager
+    policy: none
+    purge: false
+  - name: tempo-traces
+    policy: none
+    purge: false
+
+# The generated observability values expect an object storage credential secret named:
+# {{ .Storage.AccessKeySecretName }}
+# with keys:
+# - access_key
+# - secret_key
