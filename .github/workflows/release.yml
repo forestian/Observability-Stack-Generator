@@ -6,7 +6,7 @@ on:
       - "v*"
   workflow_dispatch:
     inputs:
-      tag:
+      tag_name:
         description: "Release tag to build, for example v1.0.0. Leave empty when running from a tag ref."
         required: false
         type: string
@@ -29,8 +29,8 @@ jobs:
         id: release
         shell: bash
         run: |
-          if [[ "${{ github.event_name }}" == "workflow_dispatch" && -n "${{ inputs.tag }}" ]]; then
-            release_tag="${{ inputs.tag }}"
+          if [[ "${{ github.event_name }}" == "workflow_dispatch" && -n "${{ inputs.tag_name }}" ]]; then
+            release_tag="${{ inputs.tag_name }}"
           else
             release_tag="${GITHUB_REF_NAME}"
           fi
@@ -161,12 +161,11 @@ jobs:
           cd dist
           sha256sum *.tar.gz > checksums.txt
 
-      - name: Upload assets to GitHub Release
-        uses: softprops/action-gh-release@v2
-        with:
-          tag_name: ${{ needs.resolve.outputs.release_tag }}
-          files: |
-            dist/*.tar.gz
-            dist/checksums.txt
-          fail_on_unmatched_files: true
-          overwrite_files: true
+      - name: Upload assets to existing GitHub Release
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RELEASE_TAG: ${{ needs.resolve.outputs.release_tag }}
+        run: |
+          gh release view "${RELEASE_TAG}" >/dev/null
+          gh release upload "${RELEASE_TAG}" dist/*.tar.gz dist/checksums.txt --clobber
