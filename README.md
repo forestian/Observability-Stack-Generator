@@ -26,6 +26,26 @@ go run . init --name demo-s3 --namespace monitoring --storage s3 --profile produ
 go run . version
 ```
 
+## Install from GitHub Releases
+
+Download a prebuilt binary from the GitHub Releases page.
+
+Linux/macOS:
+
+```sh
+tar -xzf <archive>.tar.gz
+chmod +x obsgen
+./obsgen version
+```
+
+Windows:
+
+Download the Windows archive, extract it, and run:
+
+```powershell
+obsgen.exe version
+```
+
 ## Commands
 
 ### `obsgen init`

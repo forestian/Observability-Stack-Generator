@@ -1,0 +1,172 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - "v*"
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: "Release tag to build, for example v1.0.0. Leave empty when running from a tag ref."
+        required: false
+        type: string
+
+permissions:
+  contents: write
+
+env:
+  BINARY_NAME: obsgen
+
+jobs:
+  resolve:
+    name: Resolve Release Tag
+    runs-on: ubuntu-latest
+    outputs:
+      release_tag: ${{ steps.release.outputs.release_tag }}
+      checkout_ref: ${{ steps.release.outputs.checkout_ref }}
+    steps:
+      - name: Resolve tag
+        id: release
+        shell: bash
+        run: |
+          if [[ "${{ github.event_name }}" == "workflow_dispatch" && -n "${{ inputs.tag }}" ]]; then
+            release_tag="${{ inputs.tag }}"
+          else
+            release_tag="${GITHUB_REF_NAME}"
+          fi
+
+          if [[ ! "${release_tag}" =~ ^v[0-9]+(\.[0-9]+)*.*$ ]]; then
+            echo "Release tag must look like v1.0.0; got '${release_tag}'." >&2
+            exit 1
+          fi
+
+          echo "release_tag=${release_tag}" >> "${GITHUB_OUTPUT}"
+          echo "checkout_ref=${release_tag}" >> "${GITHUB_OUTPUT}"
+
+  test:
+    name: Format And Test
+    needs: resolve
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ needs.resolve.outputs.checkout_ref }}
+
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+          cache: true
+
+      - name: Download modules
+        run: go mod download
+
+      - name: Check gofmt
+        shell: bash
+        run: |
+          files="$(gofmt -l .)"
+          if [[ -n "${files}" ]]; then
+            echo "The following files need gofmt:" >&2
+            echo "${files}" >&2
+            exit 1
+          fi
+
+      - name: Run tests
+        run: go test ./...
+
+  build:
+    name: Build ${{ matrix.goos }}/${{ matrix.goarch }}
+    needs:
+      - resolve
+      - test
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - goos: linux
+            goarch: amd64
+          - goos: linux
+            goarch: arm64
+          - goos: darwin
+            goarch: amd64
+          - goos: darwin
+            goarch: arm64
+          - goos: windows
+            goarch: amd64
+          - goos: windows
+            goarch: arm64
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ needs.resolve.outputs.checkout_ref }}
+
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+          cache: true
+
+      - name: Download modules
+        run: go mod download
+
+      - name: Build archive
+        shell: bash
+        env:
+          GOOS: ${{ matrix.goos }}
+          GOARCH: ${{ matrix.goarch }}
+          VERSION: ${{ needs.resolve.outputs.release_tag }}
+        run: |
+          archive="${BINARY_NAME}_${VERSION}_${GOOS}_${GOARCH}.tar.gz"
+          binary="${BINARY_NAME}"
+          if [[ "${GOOS}" == "windows" ]]; then
+            binary="${binary}.exe"
+          fi
+
+          mkdir -p dist package
+          CGO_ENABLED=0 go build \
+            -trimpath \
+            -ldflags="-s -w -X main.version=${VERSION}" \
+            -o "package/${binary}" \
+            .
+
+          tar -czf "dist/${archive}" -C package "${binary}"
+
+      - name: Upload build artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: release-assets-${{ matrix.goos }}-${{ matrix.goarch }}
+          path: dist/*.tar.gz
+          if-no-files-found: error
+
+  release:
+    name: Upload Release Assets
+    needs:
+      - resolve
+      - build
+    runs-on: ubuntu-latest
+    steps:
+      - name: Download build artifacts
+        uses: actions/download-artifact@v4
+        with:
+          pattern: release-assets-*
+          path: dist
+          merge-multiple: true
+
+      - name: Generate checksums
+        shell: bash
+        run: |
+          cd dist
+          sha256sum *.tar.gz > checksums.txt
+
+      - name: Upload assets to GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ needs.resolve.outputs.release_tag }}
+          files: |
+            dist/*.tar.gz
+            dist/checksums.txt
+          fail_on_unmatched_files: true
+          overwrite_files: true
